@@ -43,12 +43,14 @@ def run_test(env: gym.Env, agents: Tuple[Agent, Agent], epoch: int, n: int, reco
     for ep in range(n):
         moves = []
         obs = env.reset()
+        env.render()
         curr_agent = 0
         while True:
             action, _ = agents[curr_agent].choose_action(obs,
                                                          env.env.action_space if record else env.action_space)
             moves.append(env.env.actions[action] if record else env.actions[action])
             obs, _, done, info = test_env.step(action)
+            test_env.render()
             captures = info.get('captured')
             if len(captures) > 0:
                 moves[-1] += 'x' + 'x'.join(captures)
@@ -56,4 +58,5 @@ def run_test(env: gym.Env, agents: Tuple[Agent, Agent], epoch: int, n: int, reco
                 write_match_infos(info, moves, f'match_{epoch}_{ep}')
                 break
             curr_agent = 0 if curr_agent == 1 else 1
+    test_env.close()
     logger.info('Test match(es) completed and results saved')

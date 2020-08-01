@@ -28,7 +28,7 @@ def write_match_infos(infos: dict, moves: List[str], name: str):
                 f.write(f'{i // 2 + 1}: {moves[i]}  -  {moves[i + 1]}\n')
 
 
-def run_test(env: gym.Env, agents: Tuple[Agent, Agent], epoch: int, n: int, record: Optional[bool] = False):
+def run_test(env: gym.Env, agents: Tuple[Agent, Agent], epoch: int, n: int, render: bool = True, record: bool = False):
     """
     Run N matches as test
 
@@ -36,21 +36,24 @@ def run_test(env: gym.Env, agents: Tuple[Agent, Agent], epoch: int, n: int, reco
     :param agents: The two agents (Defender, Attacker)
     :param epoch: The current training epoch the agents are at
     :param n: The number of matches to run
+    :param render: If True, render the test matches
     :param record: If True, wrap the environment in a Monitor and save the matches as videos as well
     """
     logger.info(f"Starting {n} test match(es); video recording is {'enabled' if record else 'disabled'}")
     test_env = env if not record else Monitor(env, os.path.join(records_dir, 'videos'))
     for ep in range(n):
         moves = []
-        obs = env.reset()
-        env.render()
+        obs = test_env.reset()
+        if render:
+            test_env.render()
         curr_agent = 0
         while True:
             action, _ = agents[curr_agent].choose_action(obs,
-                                                         env.env.action_space if record else env.action_space)
-            moves.append(env.env.actions[action] if record else env.actions[action])
+                                                         test_env.env.action_space if record else env.action_space)
+            moves.append(test_env.env.actions[action] if record else env.actions[action])
             obs, _, done, info = test_env.step(action)
-            test_env.render()
+            if render:
+                test_env.render()
             captures = info.get('captured')
             if len(captures) > 0:
                 moves[-1] += 'x' + 'x'.join(captures)

@@ -83,7 +83,8 @@ if __name__ == '__main__':
 
     test_matches = 4
     test_record = False
-    run_test(env, (defender, attacker), epochs, test_matches, test_record)
+    test_show = True
+    run_test(env, (defender, attacker), epochs, test_matches, test_show, test_record)
 
     # name = 'DEF_labels_1_5_full.desc'
     # ls = load_from_descriptor(name, datasets_dir)

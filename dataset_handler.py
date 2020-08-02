@@ -58,7 +58,16 @@ def build_dataset(matches: MatchesCollection, epoch: int):
     logger.info('All datasets built')
 
 
-def load_dataset(epoch: int, limit: int, n_matches: int, player: str):
+def load_dataset(epoch: int, limit: int, n_matches: int, player: str) -> Tuple[Tuple[np.array, np.array], Tuple[np.array, np.array], Tuple[np.array, np.array]]:
+    """
+    Load the dataset
+
+    :param epoch: The current epoch
+    :param limit: The moves limit
+    :param n_matches: The number of matches per player
+    :param player: The current player
+    :return: The processed train, validation and testing arrays
+    """
     s_name = f'{player}_states_{epoch}_{n_matches}_{limit}.dat'
     l_name = f'{player}_labels_{epoch}_{n_matches}_{limit}.dat'
     if os.path.isfile(os.path.join(datasets_dir, s_name)):
@@ -78,20 +87,21 @@ def load_dataset(epoch: int, limit: int, n_matches: int, player: str):
     return prepare_for_dataset(samples, labels)
 
 
-def prepare_for_dataset(samples: np.array, labels: np.array) -> Tuple[np.array, np.array, np.array]:
+def prepare_for_dataset(samples: np.array, labels: np.array) -> Tuple[Tuple[np.array, np.array], Tuple[np.array, np.array], Tuple[np.array, np.array]]:
+    """
+    Shuffle and split the samples and labels
+
+    :param samples: The samples
+    :param labels: The labels
+    :return: The processed train, validation and testing arrays
+    """
     # shuffling and splitting in train/val/test
     samples, labels = shuffle_data((samples, labels))
     test_idx = int(len(samples) * SETTINGS.TRAIN_TEST_SPLIT)
     val_idx = int(test_idx * SETTINGS.TRAIN_VAL_SPLIT)
-    train_data = [
-        samples[:val_idx], labels[:val_idx]
-    ]
-    val_data = [
-        samples[val_idx:test_idx], labels[val_idx:test_idx]
-    ]
-    test_data = [
-        samples[test_idx:], labels[test_idx:]
-    ]
+    train_data = (samples[:val_idx], labels[:val_idx])
+    val_data = (samples[val_idx:test_idx], labels[val_idx:test_idx])
+    test_data = (samples[test_idx:], labels[test_idx:])
     return train_data, val_data, test_data
 
 

@@ -1,4 +1,5 @@
 import os
+import csv
 from typing import Tuple, Optional, List
 
 import gym
@@ -28,6 +29,32 @@ def write_match_infos(infos: dict, moves: List[str], name: str):
                 f.write(f'{i // 2 + 1}: {moves[i]}  -  {moves[i + 1]}\n')
 
 
+def update_summary(winners: List[str], moves: List[int], epoch: int):
+    # check if file exist already; if not, add the header for when we write
+    has_header = os.path.isfile(os.path.join(records_dir, 'summary.csv'))
+    # write summary
+    with open(os.path.join(records_dir, 'summary.csv'), 'a+', newline='') as csvfile:
+        fieldnames = ['epoch', 'def_wins', 'atk_wins', 'draws', 'max_moves', 'min_moves', 'avg_moves']
+        writer = csv.DictWriter(csvfile, fieldnames=fieldnames)
+        if not has_header:
+            writer.writeheader()
+        def_wins = winners.count('DEF')
+        atk_wins = winners.count('ATK')
+        draws = len(winners) - def_wins - atk_wins
+        max_moves = max(moves)
+        min_moves = min(moves)
+        avg_moves = min_moves + (max_moves - min_moves) // 2
+        writer.writerow({
+            'epoch': epoch,
+            'def_wins': def_wins,
+            'atk_wins': atk_wins,
+            'draws': draws,
+            'max_moves': max_moves,
+            'min_moves': min_moves,
+            'avg_moves': avg_moves
+        })
+
+
 def run_test(env: gym.Env, agents: Tuple[Agent, Agent], epoch: int):
     """
     Run N matches as test
@@ -41,6 +68,8 @@ def run_test(env: gym.Env, agents: Tuple[Agent, Agent], epoch: int):
     test_env = env if not SETTINGS.RECORD_TEST_MATCHES else Monitor(env=env,
                                                                     directory=os.path.join(videos_dir, str(epoch)),
                                                                     video_callable=lambda episode_id: episode_id % 10 == 0)
+    winners = []
+    moves_len = []
     for ep in range(SETTINGS.TEST_MATCHES):
         moves = []
         obs = test_env.reset()
@@ -59,7 +88,10 @@ def run_test(env: gym.Env, agents: Tuple[Agent, Agent], epoch: int):
                 moves[-1] += 'x' + 'x'.join(captures)
             if done:
                 write_match_infos(info, moves, f'match_{epoch}_{ep}')
+                winners.append(info.get('winner', None))
+                moves_len.append(len(moves))
                 break
             curr_agent = 0 if curr_agent == 1 else 1
     test_env.close()
+    update_summary(winners, moves_len, epoch)
     logger.info('Test match(es) completed and results saved')

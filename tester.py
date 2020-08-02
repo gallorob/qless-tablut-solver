@@ -6,7 +6,7 @@ from gym import logger
 from gym.wrappers import Monitor
 
 from agent import Agent
-from globals import records_dir
+from globals import records_dir, videos_dir, SETTINGS
 
 
 def write_match_infos(infos: dict, moves: List[str], name: str):
@@ -28,31 +28,31 @@ def write_match_infos(infos: dict, moves: List[str], name: str):
                 f.write(f'{i // 2 + 1}: {moves[i]}  -  {moves[i + 1]}\n')
 
 
-def run_test(env: gym.Env, agents: Tuple[Agent, Agent], epoch: int, n: int, render: bool = True, record: bool = False):
+def run_test(env: gym.Env, agents: Tuple[Agent, Agent], epoch: int):
     """
     Run N matches as test
 
     :param env: The gym.Env
     :param agents: The two agents (Defender, Attacker)
     :param epoch: The current training epoch the agents are at
-    :param n: The number of matches to run
-    :param render: If True, render the test matches
-    :param record: If True, wrap the environment in a Monitor and save the matches as videos as well
     """
-    logger.info(f"Starting {n} test match(es); video recording is {'enabled' if record else 'disabled'}")
-    test_env = env if not record else Monitor(env, os.path.join(records_dir, 'videos'))
-    for ep in range(n):
+    logger.info(f"Starting {SETTINGS.TEST_MATCHES} test match(es)")
+    logger.info(f"video recording is {'enabled' if SETTINGS.RECORD_TEST_MATCHES else 'disabled'}")
+    test_env = env if not SETTINGS.RECORD_TEST_MATCHES else Monitor(env=env,
+                                                                    directory=os.path.join(videos_dir, str(epoch)),
+                                                                    video_callable=lambda episode_id: episode_id % 10 == 0)
+    for ep in range(SETTINGS.TEST_MATCHES):
         moves = []
         obs = test_env.reset()
-        if render:
+        if SETTINGS.RENDER_TEST_MATCHES:
             test_env.render()
         curr_agent = 0
         while True:
             action, _ = agents[curr_agent].choose_action(obs,
-                                                         test_env.env.action_space if record else env.action_space)
-            moves.append(test_env.env.actions[action] if record else env.actions[action])
+                                                         test_env.env.action_space if SETTINGS.RECORD_TEST_MATCHES else env.action_space)
+            moves.append(test_env.env.actions[action] if SETTINGS.RECORD_TEST_MATCHES else env.actions[action])
             obs, _, done, info = test_env.step(action)
-            if render:
+            if SETTINGS.RENDER_TEST_MATCHES:
                 test_env.render()
             captures = info.get('captured')
             if len(captures) > 0:

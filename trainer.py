@@ -2,36 +2,40 @@ import gym
 
 from agent import *
 from dataset_handler import *
-from globals import matches_dir
+from globals import matches_dir, SETTINGS
 from match_handler import *
 
 from tester import run_test
 
-# import argparse
 
 # set the level for the logger
 logger.set_level(logger.INFO)
 
 
-def train_loop(env: gym.Env, agents: Tuple[Agent, Agent], n_matches: int, epochs: int, use_existing: bool = False):
+def train_loop(env: gym.Env, agents: Tuple[Agent, Agent]):
     """
     Training loop for the agents
 
     :param env: The gym.Env
     :param agents: A tuple with the two agents: (defender, attacker)
-    :param n_matches: The number of matches per player to simulate at each epoch
-    :param epochs: The number of epochs to train the agents for
-    :param use_existing: If true, load the simulated matches instead of simulating them
     """
     logger.info(f'Starting training...')
-    for epoch in range(epochs):
-        logger.info(f'Epoch {epoch + 1}/{epochs}:')
-        if not use_existing:
-            simulated = simulate_matches(env, agents, n_matches, epoch)
+    for epoch in range(SETTINGS.EPOCHS):
+        logger.info(f'Epoch {epoch + 1}/{SETTINGS.EPOCHS}:')
+        if SETTINGS.SIMULATE_MATCHES:
+            simulated = simulate_matches(env, agents, SETTINGS.N_MATCHES, epoch)
         else:
-            sim_name = f'matches_{epoch}_{n_matches}.pkl'
+            sim_name = f'matches_{epoch}_{SETTINGS.N_MATCHES}.pkl'
             simulated = load_matches(sim_name, matches_dir)
-        build_dataset(simulated, epochs)
+        if SETTINGS.GENERATE_DATASET:
+            build_dataset(simulated, epoch + 1)
+        for player, agent in zip(['DEF', 'ATK'], agents):
+            logger.info(f'Training {player} agent...')
+            for limit in LAST_MOVES:
+                (train, val, test) = load_dataset(epoch + 1, limit, SETTINGS.N_MATCHES, player)
+                agent.train((train, val, test))
+            logger.info(f'Agent {player} trained.')
+        run_test(env, agents, epoch + 1)
 
 
 def simulate_matches(env: gym.Env, agents: Tuple[Agent, Agent], n_matches: int, epoch: int) -> MatchesCollection:
@@ -69,24 +73,3 @@ def simulate_matches(env: gym.Env, agents: Tuple[Agent, Agent], n_matches: int, 
     save_matches(matches, matches_dir)
     logger.debug(f'Saved {matches.name}')
     return matches
-
-
-if __name__ == '__main__':
-    # parser = argparse.ArgumentParser(description='Solver for the TablutEnv')
-    env = gym.make('gym_tablut:Tablut-v0')
-    defender = Agent()
-    attacker = Agent()
-    n_matches = 20
-    epochs = 1
-    # use_existing = False
-    # train_loop(env, (defender, attacker), n_matches, epochs, use_existing)
-
-    test_matches = 4
-    test_record = False
-    test_show = True
-    run_test(env, (defender, attacker), epochs, test_matches, test_show, test_record)
-
-    # name = 'DEF_labels_1_5_full.desc'
-    # ls = load_from_descriptor(name, datasets_dir)
-    # print(ls.shape)
-    # print(ls)

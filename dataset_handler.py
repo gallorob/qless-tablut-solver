@@ -1,4 +1,4 @@
-from typing import Optional, Tuple
+from typing import Optional, Tuple, Any, Union
 from gym import logger
 from match_handler import MatchesCollection
 from globals import LAST_MOVES, SHAPE_STATE, datasets_dir
@@ -6,6 +6,8 @@ from globals import LAST_MOVES, SHAPE_STATE, datasets_dir
 import os
 
 import numpy as np
+
+from globals import SETTINGS
 
 
 def build_dataset(matches: MatchesCollection, epoch: int):
@@ -56,6 +58,60 @@ def build_dataset(matches: MatchesCollection, epoch: int):
     logger.info('All datasets built')
 
 
+def load_dataset(epoch: int, limit: int, n_matches: int, player: str):
+    s_name = f'{player}_states_{epoch}_{n_matches}_{limit}.dat'
+    l_name = f'{player}_labels_{epoch}_{n_matches}_{limit}.dat'
+    if os.path.isfile(os.path.join(datasets_dir, s_name)):
+        samples = load_data(name=s_name,
+                            shape=(n_matches * limit, SHAPE_STATE[0], SHAPE_STATE[1], SHAPE_STATE[2]),
+                            path=datasets_dir)
+        labels = load_data(name=l_name,
+                           shape=(n_matches * limit),
+                           path=datasets_dir)
+    else:
+        s_name = f'{player}_states_{epoch}_{n_matches}_full.desc'
+        l_name = f'{player}_labels_{epoch}_{n_matches}_full.desc'
+        samples = load_from_descriptor(name=s_name,
+                                       path=datasets_dir)
+        labels = load_from_descriptor(name=l_name,
+                                      path=datasets_dir)
+    return prepare_for_dataset(samples, labels)
+
+
+def prepare_for_dataset(samples: np.array, labels: np.array) -> Tuple[np.array, np.array, np.array]:
+    # shuffling and splitting in train/val/test
+    samples, labels = shuffle_data((samples, labels))
+    test_idx = int(len(samples) * SETTINGS.TRAIN_TEST_SPLIT)
+    val_idx = int(test_idx * SETTINGS.TRAIN_VAL_SPLIT)
+    train_data = [
+        samples[:val_idx], labels[:val_idx]
+    ]
+    val_data = [
+        samples[val_idx:test_idx], labels[val_idx:test_idx]
+    ]
+    test_data = [
+        samples[test_idx:], labels[test_idx:]
+    ]
+    return train_data, val_data, test_data
+
+
+def shuffle_data(data: Tuple[np.array, np.array]) -> Tuple[np.array, np.array]:
+    """
+    Shuffle the samples and labels
+
+    :param data: A tuple (samples, labels)
+    :return: The shuffled samples and labels
+    """
+    idxs = np.arange(len(data[1]))
+    np.random.shuffle(idxs)
+    samples = np.empty(data[0].shape)
+    labels = np.empty(data[1].shape)
+    for i in range(len(idxs)):
+        samples[i] = data[0][idxs[i]]
+        labels[i] = data[1][idxs[i]]
+    return samples, labels
+
+
 def save_data(data: np.array, name: str, path: Optional[str] = './', descriptor: bool = False):
     """
     Save the data as memory map on disk as a .dat file
@@ -77,7 +133,7 @@ def save_data(data: np.array, name: str, path: Optional[str] = './', descriptor:
     del fp
 
 
-def load_data(name: str, shape: Tuple[int, int, int, int], path: Optional[str] = './') -> np.array:
+def load_data(name: str, shape: Union[Any, Tuple[int, int, int, int]], path: Optional[str] = './') -> np.array:
     """
     Load the dataset from the memory map .dat file
 

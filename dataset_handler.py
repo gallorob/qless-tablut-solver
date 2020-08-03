@@ -1,13 +1,31 @@
 from typing import Optional, Tuple, Any, Union
 from gym import logger
 from match_handler import MatchesCollection
-from globals import LAST_MOVES, SHAPE_STATE, datasets_dir
-
+from globals import LAST_MOVES, SHAPE_STATE, datasets_dir, TORCH_SHAPE_STATE
+from torch.utils.data import Dataset
+import torch as th
 import os
 
 import numpy as np
 
 from globals import SETTINGS
+
+
+class TablutDataset(Dataset):
+    def __init__(self, samples, labels):
+        self.samples = samples
+        self.labels = labels
+    
+    def __len__(self):
+        return len(self.samples)
+    
+    def __getitem__(self, idx):
+        if th.is_tensor(idx):
+            idx = idx.tolist()
+        sample = self.samples[idx]
+        sample = sample.reshape(TORCH_SHAPE_STATE)
+        label = self.labels[idx]
+        return sample, label
 
 
 def build_dataset(matches: MatchesCollection, epoch: int):
@@ -58,7 +76,7 @@ def build_dataset(matches: MatchesCollection, epoch: int):
     logger.info('All datasets built')
 
 
-def load_dataset(epoch: int, limit: int, n_matches: int, player: str) -> Tuple[Tuple[np.array, np.array], Tuple[np.array, np.array], Tuple[np.array, np.array]]:
+def load_dataset(epoch: int, limit: int, n_matches: int, player: str) -> TablutDataset:
     """
     Load the dataset
 
@@ -84,10 +102,10 @@ def load_dataset(epoch: int, limit: int, n_matches: int, player: str) -> Tuple[T
                                        path=datasets_dir)
         labels = load_from_descriptor(name=l_name,
                                       path=datasets_dir)
-    return prepare_for_dataset(samples, labels)
+    return prepare_dataset(samples, labels)
 
 
-def prepare_for_dataset(samples: np.array, labels: np.array) -> Tuple[Tuple[np.array, np.array], Tuple[np.array, np.array], Tuple[np.array, np.array]]:
+def prepare_dataset(samples: np.array, labels: np.array) -> TablutDataset:
     """
     Shuffle and split the samples and labels
 
@@ -95,31 +113,8 @@ def prepare_for_dataset(samples: np.array, labels: np.array) -> Tuple[Tuple[np.a
     :param labels: The labels
     :return: The processed train, validation and testing arrays
     """
-    # shuffling and splitting in train/val/test
-    samples, labels = shuffle_data((samples, labels))
-    test_idx = int(len(samples) * SETTINGS.TRAIN_TEST_SPLIT)
-    val_idx = int(test_idx * SETTINGS.TRAIN_VAL_SPLIT)
-    train_data = (samples[:val_idx], labels[:val_idx])
-    val_data = (samples[val_idx:test_idx], labels[val_idx:test_idx])
-    test_data = (samples[test_idx:], labels[test_idx:])
-    return train_data, val_data, test_data
-
-
-def shuffle_data(data: Tuple[np.array, np.array]) -> Tuple[np.array, np.array]:
-    """
-    Shuffle the samples and labels
-
-    :param data: A tuple (samples, labels)
-    :return: The shuffled samples and labels
-    """
-    idxs = np.arange(len(data[1]))
-    np.random.shuffle(idxs)
-    samples = np.empty(data[0].shape)
-    labels = np.empty(data[1].shape)
-    for i in range(len(idxs)):
-        samples[i] = data[0][idxs[i]]
-        labels[i] = data[1][idxs[i]]
-    return samples, labels
+    dataset = TablutDataset(th.from_numpy(samples), th.from_numpy(labels))
+    return dataset
 
 
 def save_data(data: np.array, name: str, path: Optional[str] = './', descriptor: bool = False):

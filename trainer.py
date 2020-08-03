@@ -8,10 +8,6 @@ from match_handler import *
 from tester import run_test
 
 
-# set the level for the logger
-logger.set_level(logger.INFO)
-
-
 def train_loop(env: gym.Env, agents: Tuple[Agent, Agent]):
     """
     Training loop for the agents
@@ -32,8 +28,9 @@ def train_loop(env: gym.Env, agents: Tuple[Agent, Agent]):
         for player, agent in zip(['DEF', 'ATK'], agents):
             logger.info(f'Training {player} agent...')
             for limit in LAST_MOVES:
-                (train, val, test) = load_dataset(epoch + 1, limit, SETTINGS.N_MATCHES, player)
-                agent.train((train, val, test))
+                logger.info(f'Training with at most last {limit} moves...')
+                dataset = load_dataset(epoch + 1, limit, SETTINGS.N_MATCHES, player)
+                agent.train(dataset)
             logger.info(f'Agent {player} trained.')
         run_test(env, agents, epoch + 1)
 

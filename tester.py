@@ -67,7 +67,7 @@ def run_test(env: gym.Env, agents: Tuple[Agent, Agent], epoch: int):
     logger.info(f"video recording is {'enabled' if SETTINGS.RECORD_TEST_MATCHES else 'disabled'}")
     test_env = env if not SETTINGS.RECORD_TEST_MATCHES else Monitor(env=env,
                                                                     directory=os.path.join(videos_dir, str(epoch)),
-                                                                    video_callable=lambda episode_id: episode_id % 10 == 0)
+                                                                    video_callable=lambda episode_id: (episode_id + 1) % SETTINGS.TEST_MATCHES_RECORD_INTERVAL == 0)
     winners = []
     moves_len = []
     for ep in range(SETTINGS.TEST_MATCHES):

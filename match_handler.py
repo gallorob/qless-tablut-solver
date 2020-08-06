@@ -113,7 +113,7 @@ def save_matches(matches: MatchesCollection, path: Optional[str] = './'):
         pickle.dump(matches, f)
 
 
-def load_matches(name: str, path: Optional[str] = './'):
+def load_matches(name: str, path: Optional[str] = './') -> MatchesCollection:
     """
     Load the matches from a .pkl file
 

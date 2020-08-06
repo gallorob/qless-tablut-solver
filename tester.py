@@ -1,6 +1,6 @@
-import os
 import csv
-from typing import Tuple, Optional, List
+import os
+from typing import Tuple, List
 
 import gym
 from gym import logger
@@ -55,7 +55,7 @@ def update_summary(winners: List[str], moves: List[int], epoch: int):
         })
 
 
-def run_test(env: gym.Env, agents: Tuple[Agent, Agent], epoch: int):
+def run_test(env: gym.Env, agents: Tuple[Agent, Agent], epoch: int) -> List[str]:
     """
     Run N matches as test
 
@@ -67,7 +67,8 @@ def run_test(env: gym.Env, agents: Tuple[Agent, Agent], epoch: int):
     logger.info(f"video recording is {'enabled' if SETTINGS.RECORD_TEST_MATCHES else 'disabled'}")
     test_env = env if not SETTINGS.RECORD_TEST_MATCHES else Monitor(env=env,
                                                                     directory=os.path.join(videos_dir, str(epoch)),
-                                                                    video_callable=lambda episode_id: (episode_id + 1) % SETTINGS.TEST_MATCHES_RECORD_INTERVAL == 0)
+                                                                    video_callable=lambda episode_id: (
+                                                                                                                  episode_id + 1) % SETTINGS.TEST_MATCHES_RECORD_INTERVAL == 0)
     winners = []
     moves_len = []
     for ep in range(SETTINGS.TEST_MATCHES):
@@ -95,3 +96,4 @@ def run_test(env: gym.Env, agents: Tuple[Agent, Agent], epoch: int):
     test_env.close()
     update_summary(winners, moves_len, epoch)
     logger.info('Test match(es) completed and results saved')
+    return winners
